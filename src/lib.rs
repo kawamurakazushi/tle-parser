@@ -1,4 +1,5 @@
 extern crate nom;
+use nom::character::complete::digit1;
 use nom::{
     bytes::complete::{tag, take, take_until},
     character::complete::space1,
@@ -95,6 +96,24 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
                 element_number,
             ),
             _,
+            //
+            _,
+            _,
+            _satellite_number,
+            _,
+            inclination,
+            _,
+            right_ascension,
+            _,
+            eccentricity,
+            _,
+            argument_of_perigee,
+            _,
+            mean_anomaly,
+            _,
+            mean_motion,
+            _,
+            revolution_number,
         ),
     ) = tuple((
         take_until::<&str, &str, (_, ErrorKind)>("\n"),
@@ -125,6 +144,23 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
         ),
         tag("\n"),
         // second line parser
+        tag("2"),
+        space1,
+        satellite_number_parser,
+        space1,
+        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
+        space1,
+        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
+        space1,
+        map_res(take(7usize), |i: &str| format!("0.{}", i).parse::<f64>()),
+        space1,
+        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
+        space1,
+        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
+        space1,
+        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
+        space1,
+        map_res(digit1, |i: &str| i.parse::<u32>()),
     ))(raw_tle)
     .map_err(|e| {
         println!("Error - {}", e);
@@ -142,13 +178,13 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
         drag_term,
         ephemeris_type,
         element_number,
-        inclination: 1.9,
-        right_ascension: 1.9,
-        eccentricity: 1.9,
-        argument_of_perigee: 1.9,
-        mean_anomaly: 1.9,
-        mean_motion: 1.9,
-        revolution_number: 1,
+        inclination,
+        right_ascension,
+        eccentricity,
+        argument_of_perigee,
+        mean_anomaly,
+        mean_motion,
+        revolution_number,
     })
 }
 
@@ -165,7 +201,6 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     fn parse_grus_tle() {
         let raw_tle = "GRUS-1A
 1 43890U 18111Q   20044.88470557  .00000320  00000-0  36258-4 0  9993
@@ -183,6 +218,14 @@ mod tests {
         assert_eq!(tle.drag_term, 0.36258e-4);
         assert_eq!(tle.ephemeris_type, 0);
         assert_eq!(tle.element_number, 9993);
+        // 2nd line
+        assert_eq!(tle.inclination, 97.7009);
+        assert_eq!(tle.right_ascension, 312.6237);
+        assert_eq!(tle.eccentricity, 0.0003899);
+        assert_eq!(tle.argument_of_perigee, 7.8254);
+        assert_eq!(tle.mean_anomaly, 352.3026);
+        assert_eq!(tle.mean_motion, 14.92889838);
+        assert_eq!(tle.revolution_number, 61757);
     }
 
     #[test]
