@@ -67,6 +67,10 @@ fn one_space_parser(input: &str) -> IResult<&str, &str> {
     tag(" ")(input)
 }
 
+fn take_and_trim_parser(num: usize) -> impl Fn(&str) -> IResult<&str, &str> {
+    move |x| map(take(num), |i: &str| i.trim())(x)
+}
+
 pub fn parse(raw_tle: &str) -> Result<TLE> {
     let (
         _,
@@ -128,23 +132,19 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
                 satellite_number_parser,
                 map_opt(take(1usize), |i: &str| i.chars().nth(0usize)),
                 one_space_parser,
-                map(take(8usize), |i: &str| i.trim()),
+                take_and_trim_parser(8usize),
                 one_space_parser,
                 map(take(14usize), |i: &str| i.trim()),
                 one_space_parser,
-                map_res(map(take(10usize), |i: &str| i.trim()), |i: &str| {
-                    i.parse::<f64>()
-                }),
+                map_res(take_and_trim_parser(10usize), |i: &str| i.parse::<f64>()),
                 one_space_parser,
-                map_parser(map(take(8usize), |i: &str| i.trim()), ugly_float_parser),
+                map_parser(take_and_trim_parser(8usize), ugly_float_parser),
                 one_space_parser,
-                map_parser(map(take(8usize), |i: &str| i.trim()), ugly_float_parser),
+                map_parser(take_and_trim_parser(8usize), ugly_float_parser),
                 one_space_parser,
                 map_res(take(1usize), |i: &str| i.parse::<u32>()),
                 one_space_parser,
-                map_res(map(take(4usize), |i: &str| i.trim()), |i: &str| {
-                    i.parse::<u32>()
-                }),
+                map_res(take_and_trim_parser(4usize), |i: &str| i.parse::<u32>()),
                 map_res(take(1usize), |i: &str| i.parse::<u32>()),
             )),
         ),
@@ -155,30 +155,18 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
             one_space_parser,
             satellite_number_parser,
             one_space_parser,
-            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<f64>()
-            }),
+            map_res(take_and_trim_parser(8usize), |i: &str| i.parse::<f64>()),
             one_space_parser,
-            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<f64>()
-            }),
+            map_res(take_and_trim_parser(8usize), |i: &str| i.parse::<f64>()),
             one_space_parser,
             map_res(take(7usize), |i: &str| format!("0.{}", i).parse::<f64>()),
             one_space_parser,
-            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<f64>()
-            }),
+            map_res(take_and_trim_parser(8usize), |i: &str| i.parse::<f64>()),
             one_space_parser,
-            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<f64>()
-            }),
+            map_res(take_and_trim_parser(8usize), |i: &str| i.parse::<f64>()),
             one_space_parser,
-            map_res(map(take(11usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<f64>()
-            }),
-            map_res(map(take(5usize), |i: &str| i.trim()), |i: &str| {
-                i.parse::<u32>()
-            }),
+            map_res(take_and_trim_parser(11usize), |i: &str| i.parse::<f64>()),
+            map_res(take_and_trim_parser(5usize), |i: &str| i.parse::<u32>()),
             map_res(take(1usize), |i: &str| i.parse::<u32>()),
         )),
     ))(raw_tle)
