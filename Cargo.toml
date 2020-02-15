@@ -1,10 +1,18 @@
 [package]
+description = "Parser for the TLE (Two-line elements)"
+license = "MIT/Apache-2.0"
 name = "tle-parser"
 version = "0.1.0"
-authors = ["Kazushi Kawamura <wakaka2277@gmail.com>"]
+authors = ["Kazushi Kawamura <kawamurakazushi@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/kawamurakazushi/tle-parser"
+repository = "https://github.com/kawamurakazushi/tle-parser.git"
+documentation = "https://docs.rs/tle-parser"
+keywords = ["tle", "parser"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "tle_parser"
 
 [dependencies]
 nom = "5.1.0"
