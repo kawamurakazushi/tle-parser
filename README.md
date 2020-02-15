@@ -1,4 +1,9 @@
 # TLE Parser
+[![tle-parser at crates.io](https://img.shields.io/crates/v/tle-parser.svg)](https://crates.io/crates/tle-parser)
+[![Actions Status](https://github.com/kawamurakazushi/tle-parser/workflows/CI/badge.svg)](https://github.com/kawamurakazushi/tle-parser/actions)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+
+
 
 TLE (Two-line elements) parser.
 
