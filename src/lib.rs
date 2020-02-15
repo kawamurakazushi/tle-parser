@@ -2,7 +2,7 @@ extern crate nom;
 
 use nom::{
     bytes::complete::{tag, take, take_until},
-    combinator::{map, map_opt, map_parser, map_res, rest},
+    combinator::{map, map_opt, map_parser, map_res, opt, rest},
     sequence::tuple,
     IResult,
 };
@@ -52,8 +52,10 @@ pub struct TLE {
 // 36258-4 => 0.36258e-4
 fn ugly_float_parser(input: &str) -> IResult<&str, f64> {
     map_res(
-        tuple((take_until("-"), tag("-"), rest)),
-        |(a, _, b): (&str, &str, &str)| format!("0.{}e-{}", a, b).parse::<f64>(),
+        tuple((opt(tag("-")), take_until("-"), tag("-"), rest)),
+        |(sign, a, _, b): (Option<&str>, &str, &str, &str)| {
+            format!("{}0.{}e-{}", sign.unwrap_or(""), a, b).parse::<f64>()
+        },
     )(input)
 }
 
@@ -217,6 +219,9 @@ mod tests {
 
         let (_, f) = ugly_float_parser("00000-0").unwrap();
         assert_eq!(f, 0.0);
+
+        let (_, f) = ugly_float_parser("-36258-4").unwrap();
+        assert_eq!(f, -0.36258e-4);
     }
 
     #[test]
