@@ -1,0 +1,14 @@
+on: [push]
+
+name: CI
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/cargo@v1
+      - name: build
+        run: cargo build --release --all-features
+      - name: test
+        run: cargo test
