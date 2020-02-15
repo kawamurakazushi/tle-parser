@@ -1,10 +1,8 @@
 extern crate nom;
-use nom::character::complete::digit1;
+
 use nom::{
     bytes::complete::{tag, take, take_until},
-    character::complete::space1,
-    combinator::{map_opt, map_parser, map_res, rest},
-    error::ErrorKind,
+    combinator::{map, map_opt, map_parser, map_res, rest},
     sequence::tuple,
     IResult,
 };
@@ -51,13 +49,11 @@ pub struct TLE {
     pub revolution_number: u32,
 }
 
-fn float_parser(input: &str) -> IResult<&str, f64> {
-    map_parser(
-        take_until(" "),
-        map_res(
-            tuple((take_until("-"), tag("-"), rest)),
-            |(a, _, b): (&str, &str, &str)| format!("0.{}e-{}", a, b).parse::<f64>(),
-        ),
+// 36258-4 => 0.36258e-4
+fn ugly_float_parser(input: &str) -> IResult<&str, f64> {
+    map_res(
+        tuple((take_until("-"), tag("-"), rest)),
+        |(a, _, b): (&str, &str, &str)| format!("0.{}e-{}", a, b).parse::<f64>(),
     )(input)
 }
 
@@ -65,9 +61,9 @@ fn satellite_number_parser(input: &str) -> IResult<&str, u32> {
     map_res(take(5usize), |i: &str| i.parse::<u32>())(input)
 }
 
-// fn first_line_parser(input: &str) -> IResult<&str, u32> {
-//     map_res(take(5usize), |i: &str| i.parse::<u32>())(input)
-// }
+fn one_space_parser(input: &str) -> IResult<&str, &str> {
+    tag(" ")(input)
+}
 
 pub fn parse(raw_tle: &str) -> Result<TLE> {
     let (
@@ -94,76 +90,98 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
                 ephemeris_type,
                 _,
                 element_number,
+                _check_sum,
             ),
             _,
-            //
-            _,
-            _,
-            _satellite_number,
-            _,
-            inclination,
-            _,
-            right_ascension,
-            _,
-            eccentricity,
-            _,
-            argument_of_perigee,
-            _,
-            mean_anomaly,
-            _,
-            mean_motion,
-            _,
-            revolution_number,
+            // second line
+            (
+                _,
+                _,
+                _satellite_number,
+                _,
+                inclination,
+                _,
+                right_ascension,
+                _,
+                eccentricity,
+                _,
+                argument_of_perigee,
+                _,
+                mean_anomaly,
+                _,
+                mean_motion,
+                revolution_number,
+                _,
+            ),
         ),
     ) = tuple((
-        take_until::<&str, &str, (_, ErrorKind)>("\n"),
+        take_until("\n"),
         tag("\n"),
         // first line parser
         map_parser(
             take_until("\n"),
             tuple((
                 tag("1"),
-                space1,
+                one_space_parser,
                 satellite_number_parser,
                 map_opt(take(1usize), |i: &str| i.chars().nth(0usize)),
-                space1,
-                take_until(" "),
-                space1,
-                take_until(" "),
-                space1,
-                map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-                space1,
-                float_parser,
-                space1,
-                float_parser,
-                space1,
+                one_space_parser,
+                map(take(8usize), |i: &str| i.trim()),
+                one_space_parser,
+                map(take(14usize), |i: &str| i.trim()),
+                one_space_parser,
+                map_res(map(take(10usize), |i: &str| i.trim()), |i: &str| {
+                    i.parse::<f64>()
+                }),
+                one_space_parser,
+                map_parser(map(take(8usize), |i: &str| i.trim()), ugly_float_parser),
+                one_space_parser,
+                map_parser(map(take(8usize), |i: &str| i.trim()), ugly_float_parser),
+                one_space_parser,
                 map_res(take(1usize), |i: &str| i.parse::<u32>()),
-                space1,
-                map_res(rest, |i: &str| i.parse::<u32>()),
+                one_space_parser,
+                map_res(map(take(4usize), |i: &str| i.trim()), |i: &str| {
+                    i.parse::<u32>()
+                }),
+                map_res(take(1usize), |i: &str| i.parse::<u32>()),
             )),
         ),
         tag("\n"),
         // second line parser
-        tag("2"),
-        space1,
-        satellite_number_parser,
-        space1,
-        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-        space1,
-        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-        space1,
-        map_res(take(7usize), |i: &str| format!("0.{}", i).parse::<f64>()),
-        space1,
-        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-        space1,
-        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-        space1,
-        map_res(take_until(" "), |i: &str| i.parse::<f64>()),
-        space1,
-        map_res(digit1, |i: &str| i.parse::<u32>()),
+        tuple((
+            tag("2"),
+            one_space_parser,
+            satellite_number_parser,
+            one_space_parser,
+            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<f64>()
+            }),
+            one_space_parser,
+            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<f64>()
+            }),
+            one_space_parser,
+            map_res(take(7usize), |i: &str| format!("0.{}", i).parse::<f64>()),
+            one_space_parser,
+            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<f64>()
+            }),
+            one_space_parser,
+            map_res(map(take(8usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<f64>()
+            }),
+            one_space_parser,
+            map_res(map(take(11usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<f64>()
+            }),
+            map_res(map(take(5usize), |i: &str| i.trim()), |i: &str| {
+                i.parse::<u32>()
+            }),
+            map_res(take(1usize), |i: &str| i.parse::<u32>()),
+        )),
     ))(raw_tle)
     .map_err(|e| {
-        println!("Error - {}", e);
+        println!("🤔  Error - {}", e);
         TLEError
     })?;
 
@@ -191,12 +209,13 @@ pub fn parse(raw_tle: &str) -> Result<TLE> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn parse_float() {
-        let (_, f) = float_parser("36258-4 ").unwrap();
+    fn parse_ugly_float() {
+        let (_, f) = ugly_float_parser("36258-4").unwrap();
         assert_eq!(f, 0.36258e-4);
 
-        let (_, f) = float_parser("00000-0 ").unwrap();
+        let (_, f) = ugly_float_parser("00000-0").unwrap();
         assert_eq!(f, 0.0);
     }
 
@@ -217,7 +236,7 @@ mod tests {
         assert_eq!(tle.second_derivative_mean_motion, 0.0);
         assert_eq!(tle.drag_term, 0.36258e-4);
         assert_eq!(tle.ephemeris_type, 0);
-        assert_eq!(tle.element_number, 9993);
+        assert_eq!(tle.element_number, 999);
         // 2nd line
         assert_eq!(tle.inclination, 97.7009);
         assert_eq!(tle.right_ascension, 312.6237);
@@ -225,34 +244,33 @@ mod tests {
         assert_eq!(tle.argument_of_perigee, 7.8254);
         assert_eq!(tle.mean_anomaly, 352.3026);
         assert_eq!(tle.mean_motion, 14.92889838);
-        assert_eq!(tle.revolution_number, 61757);
+        assert_eq!(tle.revolution_number, 6175);
     }
 
     #[test]
-    #[ignore]
-    fn partial_equal() {
-        let raw_tle = "GRUS-1A
-1 43890U 18111Q   20044.88470557  .00000320  00000-0  36258-4 0  9993
-2 43890  97.7009 312.6237 0003899   7.8254 352.3026 14.92889838 61757";
+    fn parse_iss_tle() {
+        let raw_tle = "ISS (ZARYA)
+1 25544U 98067A   20045.18587073  .00000950  00000-0  25302-4 0  9990
+2 25544  51.6443 242.0161 0004885 264.6060 207.3845 15.49165514212791";
 
         let expected = TLE {
-            name: String::from("GRUS-1A"),
-            satellite_number: 1,
-            classification: 'a',
-            international_designator: String::from("test"),
-            epoch: String::from("test"),
-            first_derivative_mean_motion: 1.9,
-            second_derivative_mean_motion: 1.9,
-            drag_term: 1.9,
-            ephemeris_type: 1,
-            element_number: 1,
-            inclination: 1.9,
-            right_ascension: 1.9,
-            eccentricity: 1.9,
-            argument_of_perigee: 1.9,
-            mean_anomaly: 1.9,
-            mean_motion: 1.9,
-            revolution_number: 1,
+            name: String::from("ISS (ZARYA)"),
+            satellite_number: 25544,
+            classification: 'U',
+            international_designator: String::from("98067A"),
+            epoch: String::from("20045.18587073"),
+            first_derivative_mean_motion: 0.00000950,
+            second_derivative_mean_motion: 0.0,
+            drag_term: 0.25302e-4,
+            ephemeris_type: 0,
+            element_number: 999,
+            inclination: 51.6443,
+            right_ascension: 242.0161,
+            eccentricity: 0.0004885,
+            argument_of_perigee: 264.6060,
+            mean_anomaly: 207.3845,
+            mean_motion: 15.49165514,
+            revolution_number: 21279,
         };
 
         let tle = parse(&raw_tle).unwrap();
